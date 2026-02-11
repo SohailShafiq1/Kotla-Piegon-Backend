@@ -6,18 +6,43 @@ const tournamentSchema = new mongoose.Schema({
     required: [true, 'Tournament name is required'],
     trim: true
   },
-  admin: {
-    type: String,
-    default: 'Super Admin'
-  },
+  posters: [{
+    type: String // URLs to images
+  }],
   startDate: {
     type: Date,
     default: Date.now
   },
+  numDays: {
+    type: Number,
+    min: 1,
+    max: 12,
+    default: 1
+  },
+  numPigeons: {
+    type: Number,
+    default: 0
+  },
+  noteTimePigeons: {
+    type: Number,
+    default: 0
+  },
+  helperPigeons: {
+    type: Number,
+    default: 0
+  },
   status: {
     type: String,
-    enum: ['Upcoming', 'Ongoing', 'Completed'],
+    enum: ['Active', 'Paused', 'Upcoming', 'Completed'],
     default: 'Upcoming'
+  },
+  showOnHome: {
+    type: Boolean,
+    default: true
+  },
+  admin: {
+    type: String,
+    default: 'Super Admin'
   },
   createdAt: {
     type: Date,

@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 require('dotenv').config();
 
 const tournamentRoutes = require('./routes/tournamentRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,7 +22,9 @@ app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
 // Routes
+app.get('/api/test', (req, res) => res.send('ok'));
 app.use('/api/tournaments', tournamentRoutes);
+app.use('/api/admins', adminRoutes);
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db')
