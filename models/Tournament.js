@@ -13,6 +13,10 @@ const tournamentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  startTime: {
+    type: String,
+    default: "06:00"
+  },
   numDays: {
     type: Number,
     min: 1,
@@ -28,9 +32,19 @@ const tournamentSchema = new mongoose.Schema({
   },
   noteTimePigeons: {
     type: Number,
-    default: 0
+    default: 0,
+    validate: {
+      validator: function(v) {
+        return v <= this.numPigeons;
+      },
+      message: 'Note time pigeons cannot exceed the number of flying pigeons'
+    }
   },
   helperPigeons: {
+    type: Number,
+    default: 0
+  },
+  totalPigeons: {
     type: Number,
     default: 0
   },

@@ -58,11 +58,17 @@ exports.updateTournament = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const updatedTournament = await Tournament.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    // List of fields to not update directly
+    const restrictedFields = ['_id', '__v', 'createdAt', 'updatedAt'];
+
+    // Update fields
+    Object.keys(req.body).forEach(key => {
+      if (!restrictedFields.includes(key)) {
+        tournament[key] = req.body[key];
+      }
+    });
+
+    const updatedTournament = await tournament.save();
     res.status(200).json(updatedTournament);
   } catch (error) {
     res.status(400).json({ message: error.message });
