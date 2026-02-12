@@ -41,8 +41,9 @@ const tournamentSchema = new mongoose.Schema({
     default: true
   },
   admin: {
-    type: String,
-    default: 'Super Admin'
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin',
+    required: true
   },
   createdAt: {
     type: Date,
