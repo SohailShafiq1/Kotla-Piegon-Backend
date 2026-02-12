@@ -61,7 +61,9 @@ const tournamentSchema = new mongoose.Schema({
     name: { type: String, required: true },
     image: { type: String },
     address: { type: String },
-    phone: { type: String }
+    phone: { type: String },
+    pigeonTimes: [{ type: String }],
+    totalTime: { type: String, default: "00:00:00" }
   }],
   admin: {
     type: mongoose.Schema.Types.ObjectId,
