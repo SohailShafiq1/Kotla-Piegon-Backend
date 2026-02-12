@@ -7,11 +7,12 @@ const {
   updateTournament, 
   deleteTournament 
 } = require('../controllers/tournamentController');
+const { auth } = require('../middleware/auth');
 
 router.get('/', getAllTournaments);
-router.post('/', createTournament);
+router.post('/', auth, createTournament);
 router.get('/:id', getTournamentById);
-router.put('/:id', updateTournament);
-router.delete('/:id', deleteTournament);
+router.put('/:id', auth, updateTournament);
+router.delete('/:id', auth, deleteTournament);
 
 module.exports = router;

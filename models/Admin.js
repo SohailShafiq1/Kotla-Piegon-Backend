@@ -3,8 +3,16 @@ const mongoose = require('mongoose');
 const adminSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
-    unique: true
+    required: true
+  },
+  email: {
+    type: String,
+    unique: true,
+    sparse: true // Allows null/missing values to still be unique indexed
+  },
+  password: {
+    type: String,
+    required: true
   },
   role: {
     type: String,

@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { getAllAdmins, createAdmin } = require('../controllers/adminController');
+const { getAllAdmins, createAdmin, loginAdmin } = require('../controllers/adminController');
+const { auth, isSuperAdmin } = require('../middleware/auth');
 
-router.get('/', getAllAdmins);
-router.post('/', createAdmin);
+router.post('/login', loginAdmin);
+router.get('/', auth, getAllAdmins);
+router.post('/', auth, isSuperAdmin, createAdmin);
 
 module.exports = router;
