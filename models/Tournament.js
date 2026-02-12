@@ -19,6 +19,9 @@ const tournamentSchema = new mongoose.Schema({
     max: 12,
     default: 1
   },
+  flyingDates: [{
+    type: Date
+  }],
   numPigeons: {
     type: Number,
     default: 0
