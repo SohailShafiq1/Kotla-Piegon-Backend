@@ -48,6 +48,14 @@ const tournamentSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  firstWinner: {
+    type: String,
+    default: ""
+  },
+  lastWinner: {
+    type: String,
+    default: ""
+  },
   status: {
     type: String,
     enum: ['Active', 'Paused', 'Upcoming', 'Completed'],
