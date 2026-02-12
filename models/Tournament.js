@@ -56,10 +56,15 @@ const tournamentSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  dailyWinners: [{
+    date: Date,
+    firstWinner: String,
+    lastWinner: String
+  }],
   status: {
     type: String,
     enum: ['Active', 'Paused', 'Upcoming', 'Completed'],
-    default: 'Upcoming'
+    default: 'Active'
   },
   showOnHome: {
     type: Boolean,
