@@ -57,6 +57,12 @@ const tournamentSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  participants: [{
+    name: { type: String, required: true },
+    image: { type: String },
+    address: { type: String },
+    phone: { type: String }
+  }],
   admin: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin',
