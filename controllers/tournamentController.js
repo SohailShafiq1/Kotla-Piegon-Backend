@@ -3,13 +3,7 @@ const Tournament = require('../models/Tournament');
 // Get all tournaments
 exports.getAllTournaments = async (req, res) => {
   try {
-    let query = {};
-    // If not super admin, only show tournaments assigned to them
-    if (req.admin && req.admin.role !== 'Super Admin') {
-      query.admin = req.admin.id;
-    }
-    
-    const tournaments = await Tournament.find(query)
+    const tournaments = await Tournament.find()
       .populate('admin', 'name role')
       .sort({ createdAt: -1 });
     res.status(200).json(tournaments);
