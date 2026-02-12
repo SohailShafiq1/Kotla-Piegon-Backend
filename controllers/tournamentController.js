@@ -36,11 +36,6 @@ exports.getTournamentById = async (req, res) => {
     const tournament = await Tournament.findById(req.params.id).populate('admin', 'name role');
     if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
     
-    // Check permissions
-    if (req.admin.role !== 'Super Admin' && tournament.admin._id.toString() !== req.admin.id) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    
     res.status(200).json(tournament);
   } catch (error) {
     res.status(500).json({ message: error.message });
