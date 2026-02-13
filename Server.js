@@ -30,7 +30,6 @@ app.get('/api/test', (req, res) => res.send('ok'));
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/admins', adminRoutes);
 app.use('/api/owners', ownerRoutes);
-
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db')
   .then(async () => {
