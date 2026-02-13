@@ -70,6 +70,10 @@ const tournamentSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  headline: {
+    type: String,
+    default: ""
+  },
   participants: [{
     name: { type: String, required: true },
     image: { type: String },
