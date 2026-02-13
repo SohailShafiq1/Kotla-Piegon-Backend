@@ -9,6 +9,7 @@ require('dotenv').config();
 const tournamentRoutes = require('./routes/tournamentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const ownerRoutes = require('./routes/ownerRoutes');
+const newsRoutes = require('./routes/newsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,6 +31,8 @@ app.get('/api/test', (req, res) => res.send('ok'));
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/admins', adminRoutes);
 app.use('/api/owners', ownerRoutes);
+app.use('/api/news', newsRoutes);
+
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db')
   .then(async () => {
