@@ -1,4 +1,73 @@
 const Tournament = require('../models/Tournament');
+const { calculateGrandTotal, calculateWinners } = require('../utils/calculations');
+
+// Helper to sync times across tournaments
+const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedParticipants) => {
+  const pigeonsPerDay = (currentTournament.numPigeons || 0) + (currentTournament.helperPigeons || 0);
+  
+  for (const part of updatedParticipants) {
+    if (!part.ownerId) continue;
+
+    // Find other tournaments where this person is enrolled
+    const otherTournaments = await Tournament.find({
+      _id: { $ne: currentTournament._id },
+      'participants.ownerId': part.ownerId
+    });
+
+    for (const other of otherTournaments) {
+      let otherChanged = false;
+      const otherPigeonsPerDay = (other.numPigeons || 0) + (other.helperPigeons || 0);
+      
+      const otherParticipant = other.participants.find(p => p.ownerId && p.ownerId.toString() === part.ownerId.toString());
+      if (!otherParticipant) continue;
+
+      // Sync specific times based on matching flying dates
+      part.pigeonTimes.forEach((newTime, idx) => {
+        if (!newTime) return;
+
+        const dayIdx = Math.floor(idx / pigeonsPerDay);
+        const pNum = idx % pigeonsPerDay;
+        const currentDate = currentTournament.flyingDates[dayIdx];
+        
+        if (!currentDate) return;
+
+        // Find if 'other' tournament has this same date
+        const otherDayIdx = other.flyingDates.findIndex(d => 
+          d.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0]
+        );
+
+        if (otherDayIdx !== -1) {
+          const otherIdx = (otherDayIdx * otherPigeonsPerDay) + pNum;
+          
+          // Only sync if it's not a helper pigeon overflow for the other tournament
+          if (pNum < otherPigeonsPerDay) {
+            if (otherParticipant.pigeonTimes[otherIdx] !== newTime) {
+              otherParticipant.pigeonTimes[otherIdx] = newTime;
+              otherChanged = true;
+            }
+          }
+        }
+      });
+
+      if (otherChanged) {
+        // Recalculate totals and winners for the synced tournament
+        otherParticipant.totalTime = calculateGrandTotal(
+          otherParticipant.pigeonTimes,
+          otherPigeonsPerDay,
+          other.startTime,
+          other.numDays,
+          other.numPigeons
+        );
+
+        const { firstWinner, lastWinner } = calculateWinners(other.participants, other.startTime);
+        other.firstWinner = firstWinner;
+        other.lastWinner = lastWinner;
+
+        await other.save();
+      }
+    }
+  }
+};
 
 // Get all tournaments
 exports.getAllTournaments = async (req, res) => {
@@ -64,6 +133,12 @@ exports.updateTournament = async (req, res) => {
     });
 
     const updatedTournament = await tournament.save();
+
+    // After saving, if participants/times were updated, sync across other tournaments
+    if (req.body.participants) {
+      await syncPigeonTimesAcrossTournaments(updatedTournament, req.body.participants);
+    }
+
     res.status(200).json(updatedTournament);
   } catch (error) {
     res.status(400).json({ message: error.message });

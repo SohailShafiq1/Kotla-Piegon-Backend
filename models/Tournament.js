@@ -75,6 +75,7 @@ const tournamentSchema = new mongoose.Schema({
     default: ""
   },
   participants: [{
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Owner' },
     name: { type: String, required: true },
     image: { type: String },
     address: { type: String },
