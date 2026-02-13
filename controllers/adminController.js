@@ -1,6 +1,24 @@
 const Admin = require('../models/Admin');
+const Tournament = require('../models/Tournament');
+const Owner = require('../models/Owner');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const tournamentCount = await Tournament.countDocuments();
+    const ownerCount = await Owner.countDocuments();
+    const adminCount = await Admin.countDocuments();
+    
+    res.status(200).json({
+      tournaments: tournamentCount,
+      owners: ownerCount,
+      admins: adminCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 exports.getAllAdmins = async (req, res) => {
   try {
