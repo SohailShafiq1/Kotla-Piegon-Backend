@@ -49,7 +49,7 @@ const calculateGrandTotal = (pigeonTimes, pigeonsPerDay, startTime, numDays, sco
     return formatTime(totalSeconds, false);
 };
 
-const calculateWinners = (participants, startTime) => {
+const calculateWinners = (participants, startTime, dateIndex = null, pigeonsPerDay = 0) => {
     let latestFirstElapsed = -1;
     let firstWinnerName = "";
     let latestLastElapsed = -1;
@@ -58,7 +58,12 @@ const calculateWinners = (participants, startTime) => {
     const startSeconds = getSeconds(startTime || '06:00');
 
     (participants || []).forEach(p => {
-      const relevantTimes = (p.pigeonTimes || []).filter(t => t && t !== '');
+      let relevantTimes = [];
+      if (dateIndex !== null && dateIndex !== 'total') {
+        relevantTimes = (p.pigeonTimes || []).slice(dateIndex * pigeonsPerDay, (dateIndex + 1) * pigeonsPerDay).filter(t => t && t !== '');
+      } else {
+        relevantTimes = (p.pigeonTimes || []).filter(t => t && t !== '');
+      }
       
       if (relevantTimes.length > 0) {
         let firstLandSeconds = getSeconds(relevantTimes[0]);
@@ -81,7 +86,12 @@ const calculateWinners = (participants, startTime) => {
       }
     });
 
-    return { firstWinner: firstWinnerName, lastWinner: lastWinnerName };
+    return { 
+      firstWinner: firstWinnerName, 
+      firstTime: latestFirstElapsed >= 0 ? formatTime(latestFirstElapsed) : "",
+      lastWinner: lastWinnerName,
+      lastTime: latestLastElapsed >= 0 ? formatTime(latestLastElapsed) : ""
+    };
 };
 
 module.exports = {

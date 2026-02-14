@@ -3,7 +3,7 @@ const { calculateGrandTotal, calculateWinners } = require('../utils/calculations
 
 // Helper to sync times across tournaments
 const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedParticipants) => {
-  const pigeonsPerDay = (currentTournament.numPigeons || 0) + (currentTournament.helperPigeons || 0);
+  const pigeonsPerDay = currentTournament.numPigeons || 0;
   
   for (const part of updatedParticipants) {
     if (!part.ownerId) continue;
@@ -16,7 +16,7 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
 
     for (const other of otherTournaments) {
       let otherChanged = false;
-      const otherPigeonsPerDay = (other.numPigeons || 0) + (other.helperPigeons || 0);
+      const otherPigeonsPerDay = other.numPigeons || 0;
       
       const otherParticipant = other.participants.find(p => p.ownerId && p.ownerId.toString() === part.ownerId.toString());
       if (!otherParticipant) continue;
@@ -59,9 +59,11 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
           other.numPigeons
         );
 
-        const { firstWinner, lastWinner } = calculateWinners(other.participants, other.startTime);
+        const { firstWinner, firstTime, lastWinner, lastTime } = calculateWinners(other.participants, other.startTime);
         other.firstWinner = firstWinner;
+        other.firstTime = firstTime;
         other.lastWinner = lastWinner;
+        other.lastTime = lastTime;
 
         await other.save();
       }

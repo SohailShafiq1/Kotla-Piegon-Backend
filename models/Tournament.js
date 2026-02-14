@@ -52,14 +52,24 @@ const tournamentSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  firstTime: {
+    type: String,
+    default: ""
+  },
   lastWinner: {
+    type: String,
+    default: ""
+  },
+  lastTime: {
     type: String,
     default: ""
   },
   dailyWinners: [{
     date: Date,
     firstWinner: String,
-    lastWinner: String
+    firstTime: String,
+    lastWinner: String,
+    lastTime: String
   }],
   status: {
     type: String,
