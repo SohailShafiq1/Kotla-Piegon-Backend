@@ -15,31 +15,45 @@ const contactRoutes = require('./routes/contactRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// -------------------- CORS SETUP --------------------
+const allowedOrigins = [
+  'http://localhost:5173', // local dev
+  'https://ustadwaseemjuttkotla.netlify.app', // production
+];
+
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173', 
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true); // allow requests
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 };
 
 app.use(cors(corsOptions));
+
+// -------------------- BODY PARSER --------------------
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-// Routes
+// -------------------- ROUTES --------------------
 app.get('/api/test', (req, res) => res.send('ok'));
+
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/admins', adminRoutes);
 app.use('/api/owners', ownerRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/contacts', contactRoutes);
 
-// Database Connection
+// -------------------- DATABASE CONNECTION --------------------
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db')
   .then(async () => {
     console.log('MongoDB Connected Successfully');
-    
+
     // Initialize Super Admin if none exists
     try {
       const adminCount = await Admin.countDocuments();
@@ -60,6 +74,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db
   })
   .catch(err => console.error('MongoDB Connection Error:', err));
 
+// -------------------- START SERVER --------------------
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
