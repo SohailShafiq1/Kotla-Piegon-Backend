@@ -20,10 +20,12 @@
   "homepage": "https://github.com/SohailShafiq1/Kotla-Piegon-Backend#readme",
   "description": "",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.1"
   },
   "devDependencies": {
