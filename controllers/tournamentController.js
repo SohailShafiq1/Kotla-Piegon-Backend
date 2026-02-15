@@ -1,4 +1,5 @@
 const Tournament = require('../models/Tournament');
+const League = require('../models/League');
 const { calculateGrandTotal, calculateWinners } = require('../utils/calculations');
 
 // Helper to sync times across tournaments
@@ -123,7 +124,17 @@ exports.updateTournament = async (req, res) => {
     if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
 
     // Check permissions
-    if (req.admin.role !== 'Super Admin' && tournament.admin.toString() !== req.admin.id) {
+    let hasPermission = req.admin.role === 'Super Admin' || tournament.admin.toString() === req.admin.id;
+    
+    // Check if user is a League Admin for this tournament's league
+    if (!hasPermission && tournament.leagueName && tournament.leagueName !== 'Independent') {
+      const league = await League.findOne({ name: tournament.leagueName });
+      if (league && league.admin && league.admin.toString() === req.admin.id) {
+        hasPermission = true;
+      }
+    }
+
+    if (!hasPermission) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -157,7 +168,17 @@ exports.deleteTournament = async (req, res) => {
     if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
 
     // Check permissions
-    if (req.admin.role !== 'Super Admin' && tournament.admin.toString() !== req.admin.id) {
+    let hasPermission = req.admin.role === 'Super Admin' || tournament.admin.toString() === req.admin.id;
+    
+    // Check if user is a League Admin for this tournament's league
+    if (!hasPermission && tournament.leagueName && tournament.leagueName !== 'Independent') {
+      const league = await League.findOne({ name: tournament.leagueName });
+      if (league && league.admin && league.admin.toString() === req.admin.id) {
+        hasPermission = true;
+      }
+    }
+
+    if (!hasPermission) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
