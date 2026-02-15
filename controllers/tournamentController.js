@@ -21,19 +21,22 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
       const otherParticipant = other.participants.find(p => p.ownerId && p.ownerId.toString() === part.ownerId.toString());
       if (!otherParticipant) continue;
 
+      // Ensure otherParticipant has pigeonTimes array
+      if (!otherParticipant.pigeonTimes) otherParticipant.pigeonTimes = [];
+
       // Sync specific times based on matching flying dates
-      part.pigeonTimes.forEach((newTime, idx) => {
+      (part.pigeonTimes || []).forEach((newTime, idx) => {
         if (!newTime) return;
 
         const dayIdx = Math.floor(idx / pigeonsPerDay);
         const pNum = idx % pigeonsPerDay;
         const currentDate = currentTournament.flyingDates[dayIdx];
         
-        if (!currentDate) return;
+        if (!currentDate || !other.flyingDates) return;
 
         // Find if 'other' tournament has this same date
         const otherDayIdx = other.flyingDates.findIndex(d => 
-          d.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0]
+          d && d.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0]
         );
 
         if (otherDayIdx !== -1) {
