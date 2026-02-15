@@ -97,3 +97,42 @@ exports.loginAdmin = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.updateAdmin = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, password, role } = req.body;
+  try {
+    const admin = await Admin.findById(id);
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    if (name) admin.name = name;
+    if (email !== undefined) admin.email = email === '' ? undefined : email;
+    if (role) admin.role = role;
+    if (password) {
+      admin.password = await bcrypt.hash(password, 10);
+    }
+
+    await admin.save();
+    res.status(200).json({ 
+      message: 'Admin updated successfully',
+      admin: { id: admin._id, name: admin.name, email: admin.email, role: admin.role }
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+exports.deleteAdmin = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const admin = await Admin.findByIdAndDelete(id);
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+    res.status(200).json({ message: 'Admin deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
