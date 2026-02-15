@@ -46,7 +46,7 @@ const calculateGrandTotal = (pigeonTimes, pigeonsPerDay, startTime, numDays, sco
       const dayTimes = (pigeonTimes || []).slice(d * pigeonsPerDay, (d + 1) * pigeonsPerDay);
       totalSeconds += calculateTotalSeconds(startTime, dayTimes, scoringPigeons);
     }
-    return formatTime(totalSeconds, false);
+    return formatTime(totalSeconds, true);
 };
 
 const calculateWinners = (participants, startTime, dateIndex = null, pigeonsPerDay = 0) => {

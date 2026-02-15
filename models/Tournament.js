@@ -6,6 +6,11 @@ const tournamentSchema = new mongoose.Schema({
     required: [true, 'Tournament name is required'],
     trim: true
   },
+  leagueName: {
+    type: String,
+    default: "Independent",
+    trim: true
+  },
   posters: [{
     type: String // URLs to images
   }],

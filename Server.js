@@ -11,6 +11,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const ownerRoutes = require('./routes/ownerRoutes');
 const newsRoutes = require('./routes/newsRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const leagueRoutes = require('./routes/leagueRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -48,6 +49,7 @@ app.use('/api/admins', adminRoutes);
 app.use('/api/owners', ownerRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/contacts', contactRoutes);
+app.use('/api/leagues', leagueRoutes);
 
 // -------------------- DATABASE CONNECTION --------------------
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db')
