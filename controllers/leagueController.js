@@ -28,3 +28,17 @@ exports.deleteLeague = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.updateLeague = async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    const league = await League.findByIdAndUpdate(
+      req.params.id,
+      { name, description },
+      { new: true }
+    );
+    res.json(league);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
