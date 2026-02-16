@@ -18,9 +18,8 @@ const PORT = process.env.PORT || 5000;
 
 // -------------------- CORS SETUP --------------------
 const allowedOrigins = [
-  'http://localhost:5173', // local dev
-  'https://ustadwaseemjuttkotla.netlify.app', // production
-  'https://ustadwaseemjuttkotla.com/'
+  'http://localhost:5173', //  
+  'https://ustadwaseemjuttkotla.com/'// production
 ];
 
 const corsOptions = {
