@@ -28,7 +28,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl, or same-origin)
+      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
@@ -44,10 +44,8 @@ app.use(
   })
 );
 
-/** * FIX: The PathError [TypeError]: Missing parameter name at index 1: *
- * We use '(.*)' instead of '*' to comply with newer path-to-regexp versions.
- */
-app.options('(.*)', cors());
+// Note: app.options is handled automatically by the cors middleware above.
+// No extra app.options('*') line is needed, which prevents the PathError crash.
 
 // ==================== BODY PARSER ====================
 app.use(express.json({ limit: '50mb' }));
@@ -90,11 +88,12 @@ mongoose
     } catch (err) {
       console.error('Error initializing Super Admin:', err);
     }
+    
+    // Start Server only after DB is connected
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   })
-  .catch(err => console.error('MongoDB Connection Error:', err));
-
-// ==================== START SERVER ====================
-// Binding to 0.0.0.0 allows external access to the port
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-});
+  .catch(err => {
+    console.error('MongoDB Connection Error:', err);
+  });
