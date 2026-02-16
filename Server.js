@@ -28,8 +28,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      console.log("Incoming Origin:", origin);
-
+      // Allow requests with no origin (like mobile apps, curl, or same-origin)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
@@ -45,8 +44,10 @@ app.use(
   })
 );
 
-// Allow preflight
-
+/** * FIX: The PathError [TypeError]: Missing parameter name at index 1: *
+ * We use '(.*)' instead of '*' to comply with newer path-to-regexp versions.
+ */
+app.options('(.*)', cors());
 
 // ==================== BODY PARSER ====================
 app.use(express.json({ limit: '50mb' }));
@@ -93,6 +94,7 @@ mongoose
   .catch(err => console.error('MongoDB Connection Error:', err));
 
 // ==================== START SERVER ====================
+// Binding to 0.0.0.0 allows external access to the port
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
