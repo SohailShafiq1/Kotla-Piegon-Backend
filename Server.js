@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 5001; // make sure this matches UFW and fronten
 const allowedOrigins = [
   'http://localhost:5173',            // local dev
   'https://ustadwaseemjuttkotla.com', // production domain
-  'https://ustadwaseemjuttkotla.netlify.app' // Netlify preview
+  'https://www.ustadwaseemjuttkotla.com' // Netlify preview
 ];
 
 const corsOptions = {
