@@ -12,6 +12,7 @@ const ownerRoutes = require('./routes/ownerRoutes');
 const newsRoutes = require('./routes/newsRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const leagueRoutes = require('./routes/leagueRoutes');
+const settingRoutes = require('./routes/settingRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -62,6 +63,7 @@ app.use('/api/owners', ownerRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/leagues', leagueRoutes);
+app.use('/api/settings', settingRoutes);
 
 // ==================== DATABASE ====================
 mongoose
