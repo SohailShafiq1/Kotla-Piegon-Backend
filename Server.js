@@ -53,10 +53,8 @@ app.use('/api/contacts', contactRoutes);
 app.use('/api/leagues', leagueRoutes);
 
 // -------------------- DATABASE CONNECTION --------------------
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  })
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db')
+
   .then(async () => {
     console.log('MongoDB Connected Successfully');
 
