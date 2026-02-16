@@ -14,13 +14,13 @@ const contactRoutes = require('./routes/contactRoutes');
 const leagueRoutes = require('./routes/leagueRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001; // make sure this matches UFW and frontend
 
 // -------------------- CORS SETUP --------------------
 const allowedOrigins = [
-  'http://localhost:5173',          // local dev
-  'https://ustadwaseemjuttkotla.com', // production, **no trailing slash**
-  'https://ustadwaseemjuttkotla.netlify.app' // if you use Netlify preview
+  'http://localhost:5173',            // local dev
+  'https://ustadwaseemjuttkotla.com', // production domain
+  'https://ustadwaseemjuttkotla.netlify.app' // Netlify preview
 ];
 
 const corsOptions = {
@@ -53,7 +53,10 @@ app.use('/api/contacts', contactRoutes);
 app.use('/api/leagues', leagueRoutes);
 
 // -------------------- DATABASE CONNECTION --------------------
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db')
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
   .then(async () => {
     console.log('MongoDB Connected Successfully');
 
@@ -78,6 +81,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/piegon_db
   .catch(err => console.error('MongoDB Connection Error:', err));
 
 // -------------------- START SERVER --------------------
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT} and accessible externally`);
 });
