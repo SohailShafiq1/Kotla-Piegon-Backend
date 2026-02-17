@@ -18,15 +18,9 @@ async function cleanDatabase() {
       let needsSave = false;
       const cleanedParticipants = [];
       
-      console.log(`\n--- Checking tournament: ${tournament.name} ---`);
-      
       for (let i = 0; i < tournament.participants.length; i++) {
         const participant = tournament.participants[i];
         const cleanedParticipant = { ...participant };
-        
-        console.log(`  Participant ${i} (${participant.name}):`);
-        console.log(`    dailyStartTimes type:`, typeof participant.dailyStartTimes, Array.isArray(participant.dailyStartTimes));
-        console.log(`    dailyStartTimes value:`, JSON.stringify(participant.dailyStartTimes));
         
         // Clean dailyStartTimes
         if (participant.dailyStartTimes) {
@@ -35,7 +29,6 @@ async function cleanDatabase() {
           if (Array.isArray(participant.dailyStartTimes)) {
             for (let j = 0; j < participant.dailyStartTimes.length; j++) {
               const time = participant.dailyStartTimes[j];
-              console.log(`      Time [${j}] type:`, typeof time, `value:`, JSON.stringify(time));
               
               // If it's already a valid string time, keep it
               if (typeof time === 'string' && /^\d{2}:\d{2}$/.test(time)) {
@@ -43,14 +36,12 @@ async function cleanDatabase() {
               }
               // If it's an object, extract the value
               else if (typeof time === 'object' && time !== null) {
-                console.log(`        ⚠️  Found corrupted object time!`);
                 const values = Object.values(time);
                 cleanedTimes.push(values[0] || '06:00');
                 needsSave = true;
               }
               // If it's a string that looks like an object/array
               else if (typeof time === 'string' && (time.includes('{') || time.includes('['))) {
-                console.log(`        ⚠️  Found corrupted stringified time!`);
                 try {
                   const parsed = JSON.parse(time);
                   if (typeof parsed === 'object' && parsed !== null) {
@@ -66,13 +57,11 @@ async function cleanDatabase() {
               }
               // Fallback
               else {
-                console.log(`        ⚠️  Unexpected format, using default`);
                 cleanedTimes.push('06:00');
                 needsSave = true;
               }
             }
           } else {
-            console.log(`      ⚠️  dailyStartTimes is not an array!`);
             cleanedTimes.push('06:00');
             needsSave = true;
           }
@@ -85,12 +74,10 @@ async function cleanDatabase() {
           if (typeof participant.startTime === 'string' && /^\d{2}:\d{2}$/.test(participant.startTime)) {
             // Valid
           } else if (typeof participant.startTime === 'object') {
-            console.log(`    ⚠️  startTime is object:`, JSON.stringify(participant.startTime));
             const values = Object.values(participant.startTime);
             cleanedParticipant.startTime = values[0] || '06:00';
             needsSave = true;
           } else {
-            console.log(`    ⚠️  Invalid startTime format`);
             cleanedParticipant.startTime = '06:00';
             needsSave = true;
           }
@@ -105,15 +92,11 @@ async function cleanDatabase() {
         tournamentDoc.markModified('participants');
         await tournamentDoc.save();
         fixedCount++;
-        console.log(`  ✓ Fixed and saved tournament: ${tournament.name}`);
-      } else {
-        console.log(`  ✓ Tournament is clean`);
+        console.log(`✓ Fixed: ${tournament.name}`);
       }
     }
     
-    console.log(`\n========================================`);
-    console.log(`Cleanup complete! Fixed ${fixedCount} tournament(s)`);
-    console.log(`========================================\n`);
+    console.log(`\nCleanup complete! Fixed ${fixedCount} tournament(s)`);
     process.exit(0);
   } catch (error) {
     console.error('Error cleaning database:', error);
