@@ -9,7 +9,7 @@ const getImageUrl = (req, imagePath) => {
   if (!imagePath) return null;
   if (imagePath.startsWith('http')) return imagePath; // Already full URL
   if (imagePath.startsWith('data:')) return imagePath; // Base64 (for migration period)
-  
+
   const protocol = req.protocol;
   const host = req.get('host');
   return `${protocol}://${host}${imagePath}`;
@@ -18,10 +18,10 @@ const getImageUrl = (req, imagePath) => {
 // Helper to delete image file
 const deleteImageFile = (imagePath) => {
   if (!imagePath || imagePath.startsWith('data:') || imagePath.startsWith('http')) return;
-  
+
   const filename = path.basename(imagePath);
   const filepath = path.join(__dirname, '..', 'uploads', filename);
-  
+
   if (fs.existsSync(filepath)) {
     fs.unlinkSync(filepath);
   }
@@ -30,7 +30,7 @@ const deleteImageFile = (imagePath) => {
 // Helper to sync times across tournaments
 const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedParticipants) => {
   const pigeonsPerDay = currentTournament.numPigeons || 0;
-  
+
   for (const part of updatedParticipants) {
     if (!part.ownerId) continue;
 
@@ -43,7 +43,7 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
     for (const other of otherTournaments) {
       let otherChanged = false;
       const otherPigeonsPerDay = other.numPigeons || 0;
-      
+
       const otherParticipant = other.participants.find(p => p.ownerId && p.ownerId.toString() === part.ownerId.toString());
       if (!otherParticipant) continue;
 
@@ -57,17 +57,17 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
         const dayIdx = Math.floor(idx / pigeonsPerDay);
         const pNum = idx % pigeonsPerDay;
         const currentDate = currentTournament.flyingDates[dayIdx];
-        
+
         if (!currentDate || !other.flyingDates) return;
 
         // Find if 'other' tournament has this same date
-        const otherDayIdx = other.flyingDates.findIndex(d => 
+        const otherDayIdx = other.flyingDates.findIndex(d =>
           d && d.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0]
         );
 
         if (otherDayIdx !== -1) {
           const otherIdx = (otherDayIdx * otherPigeonsPerDay) + pNum;
-          
+
           // Only sync if it's not a helper pigeon overflow for the other tournament
           if (pNum < otherPigeonsPerDay) {
             if (otherParticipant.pigeonTimes[otherIdx] !== newTime) {
@@ -80,8 +80,8 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
           if (part.dailyStartTimes && part.dailyStartTimes[dayIdx]) {
             if (!otherParticipant.dailyStartTimes) otherParticipant.dailyStartTimes = [];
             if (otherParticipant.dailyStartTimes[otherDayIdx] !== part.dailyStartTimes[dayIdx]) {
-               otherParticipant.dailyStartTimes[otherDayIdx] = part.dailyStartTimes[dayIdx];
-               otherChanged = true;
+              otherParticipant.dailyStartTimes[otherDayIdx] = part.dailyStartTimes[dayIdx];
+              otherChanged = true;
             }
           }
         }
@@ -123,24 +123,24 @@ exports.getAllTournaments = async (req, res) => {
       .populate('admin', 'name role')
       .sort({ createdAt: -1 })
       .lean(); // Use lean() to get plain JS objects
-    
+
     // Clean participants data and convert poster paths to full URLs
     const cleanedTournaments = tournaments.map(t => {
       // Convert poster paths to full URLs
       if (t.posters && Array.isArray(t.posters)) {
         t.posters = t.posters.map(poster => getImageUrl(req, poster) || poster);
       }
-      
+
       // Convert participant images to full URLs
       if (t.participants) {
         t.participants = t.participants.map(p => {
           const cleaned = { ...p };
-          
+
           // Convert image path to full URL
           if (p.image) {
             cleaned.image = getImageUrl(req, p.image) || p.image;
           }
-          
+
           // Clean dailyStartTimes if corrupted
           if (p.dailyStartTimes && Array.isArray(p.dailyStartTimes)) {
             cleaned.dailyStartTimes = p.dailyStartTimes.map(time => {
@@ -152,13 +152,20 @@ exports.getAllTournaments = async (req, res) => {
               return String(time || '06:00');
             });
           }
-          
+
           return cleaned;
         });
       }
+
+      // Drop massive participants array if summary=true
+      if (req.query.summary === 'true') {
+        t.participantCount = t.participants ? t.participants.length : 0;
+        delete t.participants;
+      }
+
       return t;
     });
-    
+
     res.status(200).json(cleanedTournaments);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -169,9 +176,9 @@ exports.getAllTournaments = async (req, res) => {
 exports.createTournament = async (req, res) => {
   try {
     const tournamentData = { ...req.body };
-    
+
     // Parse stringified JSON fields from FormData
-    ['participants', 'flyingDates', 'posters'].forEach(field => {
+    ['participants', 'flyingDates', 'posters', 'dailyWinners'].forEach(field => {
       if (typeof tournamentData[field] === 'string') {
         try {
           tournamentData[field] = JSON.parse(tournamentData[field]);
@@ -186,23 +193,23 @@ exports.createTournament = async (req, res) => {
     if (!tournamentData.admin) {
       tournamentData.admin = req.admin.id;
     }
-    
+
     // Handle uploaded poster files
     if (req.files && req.files.length > 0) {
       const uploadedPosters = req.files.map(file => `/uploads/${file.filename}`);
       const existingPosters = Array.isArray(tournamentData.posters) ? tournamentData.posters : [];
       tournamentData.posters = [...existingPosters, ...uploadedPosters];
     }
-    
+
     const newTournament = new Tournament(tournamentData);
     const savedTournament = await newTournament.save();
-    
+
     // Convert poster paths to full URLs in response
     const response = savedTournament.toObject();
     if (response.posters) {
       response.posters = response.posters.map(poster => getImageUrl(req, poster) || poster);
     }
-    
+
     res.status(201).json(response);
   } catch (error) {
     // Clean up uploaded files if save failed
@@ -220,22 +227,22 @@ exports.getTournamentById = async (req, res) => {
       .populate('admin', 'name role')
       .lean(); // Use lean() to get plain JS object
     if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
-    
+
     // Convert poster paths to full URLs
     if (tournament.posters && Array.isArray(tournament.posters)) {
       tournament.posters = tournament.posters.map(poster => getImageUrl(req, poster) || poster);
     }
-    
+
     // Clean participants data before sending
     if (tournament.participants) {
       tournament.participants = tournament.participants.map(p => {
         const cleaned = { ...p };
-        
+
         // Convert image path to full URL
         if (p.image) {
           cleaned.image = getImageUrl(req, p.image) || p.image;
         }
-        
+
         // Clean dailyStartTimes if it exists and is corrupted
         if (p.dailyStartTimes && Array.isArray(p.dailyStartTimes)) {
           cleaned.dailyStartTimes = p.dailyStartTimes.map(time => {
@@ -247,11 +254,11 @@ exports.getTournamentById = async (req, res) => {
             return String(time || '06:00');
           });
         }
-        
+
         return cleaned;
       });
     }
-    
+
     res.status(200).json(tournament);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -266,7 +273,7 @@ exports.updateTournament = async (req, res) => {
 
     // Check permissions
     let hasPermission = req.admin.role === 'Super Admin' || tournament.admin.toString() === req.admin.id;
-    
+
     // Check if user is a League Admin for this tournament's league
     if (!hasPermission && tournament.leagueName && tournament.leagueName !== 'Independent') {
       const league = await League.findOne({ name: tournament.leagueName });
@@ -280,7 +287,7 @@ exports.updateTournament = async (req, res) => {
     }
 
     // Parse stringified JSON fields from FormData
-    ['participants', 'flyingDates', 'posters'].forEach(field => {
+    ['participants', 'flyingDates', 'posters', 'dailyWinners'].forEach(field => {
       if (typeof req.body[field] === 'string') {
         try {
           req.body[field] = JSON.parse(req.body[field]);
@@ -295,7 +302,7 @@ exports.updateTournament = async (req, res) => {
     if (req.files && req.files.length > 0) {
       const existingPosters = Array.isArray(req.body.posters) ? req.body.posters : (tournament.posters || []);
       const newPosters = req.files.map(file => `/uploads/${file.filename}`);
-      
+
       // Combine existing and new posters
       req.body.posters = [...existingPosters, ...newPosters];
     }
@@ -393,7 +400,7 @@ exports.deleteTournament = async (req, res) => {
 
     // Check permissions
     let hasPermission = req.admin.role === 'Super Admin' || tournament.admin.toString() === req.admin.id;
-    
+
     // Check if user is a League Admin for this tournament's league
     if (!hasPermission && tournament.leagueName && tournament.leagueName !== 'Independent') {
       const league = await League.findOne({ name: tournament.leagueName });
