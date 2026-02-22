@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const path = require('path');
 const Admin = require('./models/Admin');
 require('dotenv').config();
 
@@ -20,6 +21,7 @@ const PORT = process.env.PORT || 5001;
 // ==================== CORS CONFIG ====================
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:4173',
   'https://ustadwaseemjuttkotla.com',
   'https://www.ustadwaseemjuttkotla.com',
   'https://ustadwaseemjuttkotla.netlify.app',
@@ -52,6 +54,9 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// ==================== STATIC FILES (UPLOADS) ====================
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // ==================== ROUTES ====================
 app.get('/api/test', (req, res) => {
   res.json({ message: "API Working" });
@@ -64,6 +69,14 @@ app.use('/api/news', newsRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/leagues', leagueRoutes);
 app.use('/api/settings', settingRoutes);
+
+// ==================== ERROR HANDLER ====================
+app.use((err, req, res, next) => {
+  console.error("🔥 Error:", err.message);
+  res.status(err.status || 500).json({
+    message: err.message || "Internal Server Error"
+  });
+});
 
 // ==================== DATABASE ====================
 mongoose

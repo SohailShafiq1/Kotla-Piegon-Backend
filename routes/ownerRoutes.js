@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const upload = require('../middleware/upload');
 const { 
   getAllOwners, 
   searchOwners, 
@@ -11,8 +12,8 @@ const { auth } = require('../middleware/auth');
 
 router.get('/', auth, getAllOwners);
 router.get('/search', auth, searchOwners);
-router.post('/', auth, createOwner);
-router.put('/:id', auth, updateOwner);
+router.post('/', auth, upload.single('image'), createOwner);
+router.put('/:id', auth, upload.single('image'), updateOwner);
 router.delete('/:id', auth, deleteOwner);
 
 module.exports = router;

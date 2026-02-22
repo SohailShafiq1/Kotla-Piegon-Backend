@@ -1,6 +1,31 @@
 const Tournament = require('../models/Tournament');
 const League = require('../models/League');
 const { calculateGrandTotal, calculateWinners } = require('../utils/calculations');
+const path = require('path');
+const fs = require('fs');
+
+// Helper to get full image URL
+const getImageUrl = (req, imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath; // Already full URL
+  if (imagePath.startsWith('data:')) return imagePath; // Base64 (for migration period)
+  
+  const protocol = req.protocol;
+  const host = req.get('host');
+  return `${protocol}://${host}${imagePath}`;
+};
+
+// Helper to delete image file
+const deleteImageFile = (imagePath) => {
+  if (!imagePath || imagePath.startsWith('data:') || imagePath.startsWith('http')) return;
+  
+  const filename = path.basename(imagePath);
+  const filepath = path.join(__dirname, '..', 'uploads', filename);
+  
+  if (fs.existsSync(filepath)) {
+    fs.unlinkSync(filepath);
+  }
+};
 
 // Helper to sync times across tournaments
 const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedParticipants) => {
@@ -99,11 +124,22 @@ exports.getAllTournaments = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean(); // Use lean() to get plain JS objects
     
-    // Clean participants data before sending
+    // Clean participants data and convert poster paths to full URLs
     const cleanedTournaments = tournaments.map(t => {
+      // Convert poster paths to full URLs
+      if (t.posters && Array.isArray(t.posters)) {
+        t.posters = t.posters.map(poster => getImageUrl(req, poster) || poster);
+      }
+      
+      // Convert participant images to full URLs
       if (t.participants) {
         t.participants = t.participants.map(p => {
           const cleaned = { ...p };
+          
+          // Convert image path to full URL
+          if (p.image) {
+            cleaned.image = getImageUrl(req, p.image) || p.image;
+          }
           
           // Clean dailyStartTimes if corrupted
           if (p.dailyStartTimes && Array.isArray(p.dailyStartTimes)) {
@@ -134,15 +170,45 @@ exports.createTournament = async (req, res) => {
   try {
     const tournamentData = { ...req.body };
     
+    // Parse stringified JSON fields from FormData
+    ['participants', 'flyingDates', 'posters'].forEach(field => {
+      if (typeof tournamentData[field] === 'string') {
+        try {
+          tournamentData[field] = JSON.parse(tournamentData[field]);
+        } catch (e) {
+          // If not valid JSON, keep as is (might be a single string)
+          if (field === 'posters') tournamentData[field] = [tournamentData[field]];
+        }
+      }
+    });
+
     // If no admin is specified, default to the creator
     if (!tournamentData.admin) {
       tournamentData.admin = req.admin.id;
     }
     
+    // Handle uploaded poster files
+    if (req.files && req.files.length > 0) {
+      const uploadedPosters = req.files.map(file => `/uploads/${file.filename}`);
+      const existingPosters = Array.isArray(tournamentData.posters) ? tournamentData.posters : [];
+      tournamentData.posters = [...existingPosters, ...uploadedPosters];
+    }
+    
     const newTournament = new Tournament(tournamentData);
     const savedTournament = await newTournament.save();
-    res.status(201).json(savedTournament);
+    
+    // Convert poster paths to full URLs in response
+    const response = savedTournament.toObject();
+    if (response.posters) {
+      response.posters = response.posters.map(poster => getImageUrl(req, poster) || poster);
+    }
+    
+    res.status(201).json(response);
   } catch (error) {
+    // Clean up uploaded files if save failed
+    if (req.files) {
+      req.files.forEach(file => deleteImageFile(`/uploads/${file.filename}`));
+    }
     res.status(400).json({ message: error.message });
   }
 };
@@ -155,10 +221,20 @@ exports.getTournamentById = async (req, res) => {
       .lean(); // Use lean() to get plain JS object
     if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
     
+    // Convert poster paths to full URLs
+    if (tournament.posters && Array.isArray(tournament.posters)) {
+      tournament.posters = tournament.posters.map(poster => getImageUrl(req, poster) || poster);
+    }
+    
     // Clean participants data before sending
     if (tournament.participants) {
       tournament.participants = tournament.participants.map(p => {
         const cleaned = { ...p };
+        
+        // Convert image path to full URL
+        if (p.image) {
+          cleaned.image = getImageUrl(req, p.image) || p.image;
+        }
         
         // Clean dailyStartTimes if it exists and is corrupted
         if (p.dailyStartTimes && Array.isArray(p.dailyStartTimes)) {
@@ -203,11 +279,32 @@ exports.updateTournament = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    // Parse stringified JSON fields from FormData
+    ['participants', 'flyingDates', 'posters'].forEach(field => {
+      if (typeof req.body[field] === 'string') {
+        try {
+          req.body[field] = JSON.parse(req.body[field]);
+        } catch (e) {
+          // If not valid JSON, keep as is
+          if (field === 'posters') req.body[field] = [req.body[field]];
+        }
+      }
+    });
+
+    // Handle uploaded poster files
+    if (req.files && req.files.length > 0) {
+      const existingPosters = Array.isArray(req.body.posters) ? req.body.posters : (tournament.posters || []);
+      const newPosters = req.files.map(file => `/uploads/${file.filename}`);
+      
+      // Combine existing and new posters
+      req.body.posters = [...existingPosters, ...newPosters];
+    }
+
     // List of fields to not update directly
     const restrictedFields = ['_id', '__v', 'createdAt', 'updatedAt'];
 
     // Clean participants array before updating to prevent corruption
-    if (req.body.participants) {
+    if (req.body.participants && Array.isArray(req.body.participants)) {
       req.body.participants = req.body.participants.map(p => {
         const cleaned = {
           ownerId: p.ownerId,
@@ -266,8 +363,24 @@ exports.updateTournament = async (req, res) => {
       await syncPigeonTimesAcrossTournaments(updatedTournament, req.body.participants);
     }
 
-    res.status(200).json(updatedTournament);
+    // Convert poster paths to full URLs in response
+    const response = updatedTournament.toObject();
+    if (response.posters) {
+      response.posters = response.posters.map(poster => getImageUrl(req, poster) || poster);
+    }
+    if (response.participants) {
+      response.participants = response.participants.map(p => ({
+        ...p,
+        image: p.image ? getImageUrl(req, p.image) || p.image : null
+      }));
+    }
+
+    res.status(200).json(response);
   } catch (error) {
+    // Clean up uploaded files if save failed
+    if (req.files) {
+      req.files.forEach(file => deleteImageFile(`/uploads/${file.filename}`));
+    }
     res.status(400).json({ message: error.message });
   }
 };
