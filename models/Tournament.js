@@ -1,6 +1,22 @@
 const mongoose = require('mongoose');
 
+// Generate a random 4-character alphanumeric shortCode
+const generateShortCode = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing chars like 0,O,1,I,L
+  let code = '';
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
 const tournamentSchema = new mongoose.Schema({
+  shortCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true
+  },
   name: {
     type: String,
     required: [true, 'Tournament name is required'],
@@ -108,6 +124,24 @@ const tournamentSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  }
+});
+
+// Pre-save hook to generate unique shortCode
+tournamentSchema.pre('save', async function() {
+  if (!this.shortCode) {
+    let code = generateShortCode();
+    let attempts = 0;
+    
+    // Ensure uniqueness
+    while (attempts < 10) {
+      const existing = await mongoose.model('Tournament').findOne({ shortCode: code });
+      if (!existing) break;
+      code = generateShortCode();
+      attempts++;
+    }
+    
+    this.shortCode = code;
   }
 });
 

@@ -223,9 +223,23 @@ exports.createTournament = async (req, res) => {
 // Get single tournament
 exports.getTournamentById = async (req, res) => {
   try {
-    const tournament = await Tournament.findById(req.params.id)
-      .populate('admin', 'name role')
-      .lean(); // Use lean() to get plain JS object
+    const identifier = req.params.id;
+    let tournament;
+    
+    // Check if identifier is a valid MongoDB ObjectId (24 hex chars) or a shortCode (6 alphanumeric)
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
+    
+    if (isObjectId) {
+      tournament = await Tournament.findById(identifier)
+        .populate('admin', 'name role')
+        .lean();
+    } else {
+      // Search by shortCode (case-insensitive)
+      tournament = await Tournament.findOne({ shortCode: identifier.toUpperCase() })
+        .populate('admin', 'name role')
+        .lean();
+    }
+    
     if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
 
     // Convert poster paths to full URLs
