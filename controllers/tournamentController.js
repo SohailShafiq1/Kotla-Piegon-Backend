@@ -27,12 +27,20 @@ const deleteImageFile = (imagePath) => {
   }
 };
 
+// Helper to normalize date to a comparable string (date only, no time)
+const toDateStr = (date) => {
+  if (!date) return null;
+  return new Date(date).toISOString().split('T')[0];
+};
+
 // Helper to sync times across tournaments
 const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedParticipants) => {
   const pigeonsPerDay = currentTournament.numPigeons || 0;
+  if (!pigeonsPerDay) return;
 
   for (const part of updatedParticipants) {
     if (!part.ownerId) continue;
+    const ownerIdStr = part.ownerId.toString();
 
     // Find other tournaments where this person is enrolled
     const otherTournaments = await Tournament.find({
@@ -43,58 +51,72 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
     for (const other of otherTournaments) {
       let otherChanged = false;
       const otherPigeonsPerDay = other.numPigeons || 0;
+      if (!otherPigeonsPerDay) continue;
 
-      const otherParticipant = other.participants.find(p => p.ownerId && p.ownerId.toString() === part.ownerId.toString());
+      const otherParticipant = other.participants.find(
+        p => p.ownerId && p.ownerId.toString() === ownerIdStr
+      );
       if (!otherParticipant) continue;
 
-      // Ensure otherParticipant has pigeonTimes array
+      // Ensure arrays exist
       if (!otherParticipant.pigeonTimes) otherParticipant.pigeonTimes = [];
+      if (!otherParticipant.dailyStartTimes) otherParticipant.dailyStartTimes = [];
 
-      // Sync specific times based on matching flying dates
-      (part.pigeonTimes || []).forEach((newTime, idx) => {
-        if (!newTime) return;
-
-        const dayIdx = Math.floor(idx / pigeonsPerDay);
-        const pNum = idx % pigeonsPerDay;
-        const currentDate = currentTournament.flyingDates[dayIdx];
-
-        if (!currentDate || !other.flyingDates) return;
-
-        // Find if 'other' tournament has this same date
-        const otherDayIdx = other.flyingDates.findIndex(d =>
-          d && d.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0]
-        );
-
-        if (otherDayIdx !== -1) {
-          const otherIdx = (otherDayIdx * otherPigeonsPerDay) + pNum;
-
-          // Only sync if it's not a helper pigeon overflow for the other tournament
-          if (pNum < otherPigeonsPerDay) {
-            if (otherParticipant.pigeonTimes[otherIdx] !== newTime) {
-              otherParticipant.pigeonTimes[otherIdx] = newTime;
-              otherChanged = true;
-            }
-          }
-
-          // Sync individual start times as well if they exist
-          if (part.dailyStartTimes && part.dailyStartTimes[dayIdx]) {
-            if (!otherParticipant.dailyStartTimes) otherParticipant.dailyStartTimes = [];
-            if (otherParticipant.dailyStartTimes[otherDayIdx] !== part.dailyStartTimes[dayIdx]) {
-              otherParticipant.dailyStartTimes[otherDayIdx] = part.dailyStartTimes[dayIdx];
-              otherChanged = true;
-            }
-          }
-        }
+      // Build a date → dayIndex map for the other tournament
+      const otherDateMap = {};
+      (other.flyingDates || []).forEach((d, i) => {
+        const s = toDateStr(d);
+        if (s) otherDateMap[s] = i;
       });
 
-      // Also sync overall startTime if it exists and changed
+      // Iterate over all pigeon slots in the current tournament (add & edit)
+      const totalSlots = (currentTournament.numDays || 1) * pigeonsPerDay;
+      for (let idx = 0; idx < totalSlots; idx++) {
+        // Use undefined-safe access so cleared slots (empty string) still sync
+        const newTime = (part.pigeonTimes || [])[idx];
+        if (newTime === undefined) continue; // slot doesn't exist at all – skip
+
+        const dayIdx = Math.floor(idx / pigeonsPerDay);
+        const pNum   = idx % pigeonsPerDay;
+
+        const currentDateStr = toDateStr(
+          currentTournament.flyingDates && currentTournament.flyingDates[dayIdx]
+        );
+        if (!currentDateStr) continue;
+
+        const otherDayIdx = otherDateMap[currentDateStr];
+        if (otherDayIdx === undefined) continue; // other tournament doesn't fly on this date
+
+        // Only sync pigeon slots that exist in the other tournament
+        if (pNum >= otherPigeonsPerDay) continue;
+
+        const otherIdx = otherDayIdx * otherPigeonsPerDay + pNum;
+
+        if (otherParticipant.pigeonTimes[otherIdx] !== newTime) {
+          otherParticipant.pigeonTimes[otherIdx] = newTime;
+          otherChanged = true;
+        }
+
+        // Sync daily start time for matching day
+        if (part.dailyStartTimes && part.dailyStartTimes[dayIdx] !== undefined) {
+          if (otherParticipant.dailyStartTimes[otherDayIdx] !== part.dailyStartTimes[dayIdx]) {
+            otherParticipant.dailyStartTimes[otherDayIdx] = part.dailyStartTimes[dayIdx];
+            otherChanged = true;
+          }
+        }
+      }
+
+      // Sync overall startTime if changed
       if (part.startTime && otherParticipant.startTime !== part.startTime) {
         otherParticipant.startTime = part.startTime;
         otherChanged = true;
       }
 
       if (otherChanged) {
-        // Recalculate totals and winners for the synced tournament
+        // IMPORTANT: tell Mongoose the nested array was mutated
+        other.markModified('participants');
+
+        // Recalculate total for this participant
         otherParticipant.totalTime = calculateGrandTotal(
           otherParticipant.pigeonTimes,
           otherPigeonsPerDay,
@@ -104,11 +126,14 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
           otherParticipant
         );
 
-        const { firstWinner, firstTime, lastWinner, lastTime } = calculateWinners(other.participants, other.startTime);
+        const { firstWinner, firstTime, lastWinner, lastTime } = calculateWinners(
+          other.participants,
+          other.startTime
+        );
         other.firstWinner = firstWinner;
-        other.firstTime = firstTime;
-        other.lastWinner = lastWinner;
-        other.lastTime = lastTime;
+        other.firstTime   = firstTime;
+        other.lastWinner  = lastWinner;
+        other.lastTime    = lastTime;
 
         await other.save();
       }
