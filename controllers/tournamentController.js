@@ -33,8 +33,8 @@ const toDateStr = (date) => {
   return new Date(date).toISOString().split('T')[0];
 };
 
-// Helper to sync times across tournaments
-const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedParticipants) => {
+// Helper to sync times across tournaments (admin-scoped)
+const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedParticipants, currentAdmin) => {
   const pigeonsPerDay = currentTournament.numPigeons || 0;
   if (!pigeonsPerDay) return;
 
@@ -42,11 +42,19 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
     if (!part.ownerId) continue;
     const ownerIdStr = part.ownerId.toString();
 
-    // Find other tournaments where this person is enrolled
-    const otherTournaments = await Tournament.find({
+    // Build query for other tournaments
+    const query = {
       _id: { $ne: currentTournament._id },
       'participants.ownerId': part.ownerId
-    });
+    };
+
+    // If current admin is NOT a Super Admin, only sync to tournaments with the same admin
+    if (currentAdmin.role !== 'Super Admin') {
+      query.admin = currentAdmin._id;
+    }
+
+    // Find other tournaments where this person is enrolled
+    const otherTournaments = await Tournament.find(query);
 
     for (const other of otherTournaments) {
       let otherChanged = false;
@@ -405,8 +413,9 @@ exports.updateTournament = async (req, res) => {
     const updatedTournament = await tournament.save();
 
     // After saving, if participants/times were updated, sync across other tournaments
+    // Only sync to tournaments with the same admin (unless current admin is Super Admin)
     if (req.body.participants) {
-      await syncPigeonTimesAcrossTournaments(updatedTournament, req.body.participants);
+      await syncPigeonTimesAcrossTournaments(updatedTournament, req.body.participants, req.admin);
     }
 
     // Convert poster paths to full URLs in response
