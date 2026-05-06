@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Tournament = require('../models/Tournament');
 const League = require('../models/League');
 const { calculateGrandTotal, calculateWinners } = require('../utils/calculations');
@@ -50,7 +51,8 @@ const syncPigeonTimesAcrossTournaments = async (currentTournament, updatedPartic
 
     // If current admin is NOT a Super Admin, only sync to tournaments with the same admin
     if (currentAdmin.role !== 'Super Admin') {
-      query.admin = currentAdmin._id;
+      // Ensure proper ObjectId comparison
+      query.admin = new mongoose.Types.ObjectId(currentAdmin.id);
     }
 
     // Find other tournaments where this person is enrolled
